@@ -15,8 +15,8 @@ Kirim Aksi
 ----------
 (typing, upload_photo, record_video, upload_video, record_audio, upload_audio, upload_document, find_location) :
 
-    sendApiAction($chatid);
-    sendApiAction($chatid, 'upload_photo');
+    //sendApiAction($chatid);
+    //sendApiAction($chatid, 'upload_photo');
 
 
 Kirim Pesan :
@@ -74,6 +74,9 @@ Dan Lain-lain :-D
 */
 
 session_start();
+$_SESSION['state'] = '';
+$_SESSION['state_input'] = '';
+
 function prosesApiMessage($sumber)
 {
     $updateid = $sumber['update_id'];
@@ -149,7 +152,7 @@ function prosesPesanTeks($message,$callback=false)
         switch (true) {
 
         case $pesan == 'lihatdata':
-            sendApiAction($chatid);
+            //sendApiAction($chatid);
             $user = get_user_telegram($chatid);
             $text = "NIK------: ".$user[0]["nik"]."\nNama---: ".$user[0]["name"]."\nLoker---: ".$user[0]["loker"];
             $inkeyboard = [
@@ -163,7 +166,7 @@ function prosesPesanTeks($message,$callback=false)
             break;
         
         case $pesan == 'bind':
-            sendApiAction($chatid);
+            //sendApiAction($chatid);
             $nik = $_SESSION['nik'];
             $iduser = get_user_by($nik,'nik');
             bind($iduser,$chatid);
@@ -177,7 +180,7 @@ function prosesPesanTeks($message,$callback=false)
             break;
 
         case $pesan == 'unbind':
-            sendApiAction($chatid);
+            //sendApiAction($chatid);
             unbind($chatid);
             $text = "Unbind berhasil.";
             $inkeyboard = [
@@ -189,8 +192,8 @@ function prosesPesanTeks($message,$callback=false)
             break;
 
         case $pesan == 'daftar':
-            sendApiAction($chatid);
-            $user = get_user_telegram($chatid);
+            //sendApiAction($chatid);
+            //$user = get_user_telegram($chatid);
             $text = "Masukkan NIK anda:";
             sendApiMsg($chatid, $text);
             $_SESSION['state'] = 'daftar';
@@ -198,7 +201,7 @@ function prosesPesanTeks($message,$callback=false)
             break;
 
         case $pesan == 'aaaaa':
-            sendApiAction($chatid);
+            //sendApiAction($chatid);
             $text = "A";
             $inkeyboard = [
                 [
@@ -210,7 +213,7 @@ function prosesPesanTeks($message,$callback=false)
 
 
         default:
-            // sendApiAction($chatid);
+            // //sendApiAction($chatid);
             // $inkeyboard = [
             //     [
             //         ['text' => 'Lihat Data', 'callback_data' => 'lihatdata'],
@@ -228,13 +231,13 @@ function prosesPesanTeks($message,$callback=false)
         switch (true) {
 
         case $pesan == '/id':
-            sendApiAction($chatid);
+            //sendApiAction($chatid);
             $text = 'ID Kamu adalah: '.$fromid;
             sendApiMsg($chatid, $text);
             break;
 
         case $pesan == '!keyboard':
-            sendApiAction($chatid);
+            //sendApiAction($chatid);
             $keyboard = [
                 ['tombol 1', 'tombol 2'],
                 ['!keyboard', '!inline'],
@@ -246,19 +249,19 @@ function prosesPesanTeks($message,$callback=false)
         
 
         case $pesan == '!hide':
-            sendApiAction($chatid);
+            //sendApiAction($chatid);
             sendApiHideKeyboard($chatid, 'keyboard off');
             break;
 
         // case preg_match("/\/echo (.*)/", $pesan, $hasil):
-        //     sendApiAction($chatid);
+        //     //sendApiAction($chatid);
 
         //     $text = '*Echo:* '.$hasil[1];
         //     sendApiMsg($chatid, $text, false, 'Markdown');
         //     break;
 
         default:
-            sendApiAction($chatid);
+            //sendApiAction($chatid);
             $inkeyboard = [
                 [
                     ['text' => 'Lihat Data', 'callback_data' => 'lihatdata'],
@@ -276,21 +279,21 @@ function prosesPesanTeks($message,$callback=false)
             case 'daftar':
                 switch ($_SESSION['state_input']) {
                     case 'daftar':
-                        sendApiAction($chatid);
+                        //sendApiAction($chatid);
                         $_SESSION['daftar_nik'] = $pesan;
                         $text = "Masukkan nama anda:";
                         sendApiMsg($chatid,$text);
                         $_SESSION['state_input'] = "nik";
                         break;
                     case 'nik':
-                        sendApiAction($chatid);
+                        //sendApiAction($chatid);
                         $_SESSION['daftar_nama'] = $pesan;
                         $text = "Masukkan loker anda:";
                         sendApiMsg($chatid,$text);
                         $_SESSION['state_input'] = "nama";
                         break;
                     case 'nama':
-                        sendApiAction($chatid);
+                        //sendApiAction($chatid);
                         $_SESSION['daftar_loker'] = $pesan;
                         $text = "NIK------: {$_SESSION['daftar_nik']}\nNama---: {$_SESSION['daftar_nama']}\nLoker---: {$_SESSION['daftar_loker']}\nApakah data diatas sudah betul?\nKetik "."*ya*/*tidak*";
                         sendApiMsg($chatid,$text, false, 'Markdown');
@@ -303,16 +306,20 @@ function prosesPesanTeks($message,$callback=false)
                                 sendApiMsg($chatid,$text);
                                 break;
                             case 'tidak':
-                                sendApiAction($chatid);
+                                ////sendApiAction($chatid);
                                 $user = get_user_telegram($chatid);
                                 $text = "Masukkan NIK anda:";
                                 sendApiMsg($chatid, $text);
+                                unset($_SESSION['daftar_nik']);
+                                unset($_SESSION['daftar_nama']);
+                                unset($_SESSION['daftar_loker']);
+                                print_r($_SESSION);
                                 $_SESSION['state'] = 'daftar';
                                 $_SESSION['state_input'] = 'daftar';
                                 break;
                             default:
                                 $text = "Ketik *ya* untuk daftar\nKetik *tidak* untuk input ulang";
-                                sendApiMsg($chatid,$text);
+                                sendApiMsg($chatid,$text, false, 'Markdown');
                                 break;
                         }
                         # code...
@@ -329,12 +336,12 @@ function prosesPesanTeks($message,$callback=false)
                 switch (true) {
 
                 case $pesan == '/id':
-                    sendApiAction($chatid);
+                    //sendApiAction($chatid);
                     $text = 'ID Kamu adalah: '.$fromid;
                     sendApiMsg($chatid, $text);
                     break;
                 default:
-                    sendApiAction($chatid);
+                    //sendApiAction($chatid);
                     $inkeyboard = [
                         [
                             ['text' => 'Daftar', 'callback_data' => 'daftar'],
