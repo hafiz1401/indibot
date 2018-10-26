@@ -1,1 +1,3 @@
-/indibot/connection.php
+../indibot/connection.php
+./indibot/connection.php
+../indibot/connection.php
