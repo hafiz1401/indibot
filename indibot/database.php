@@ -16,23 +16,40 @@ function register_user($nik, $name, $loker, $chatid)
     ]);
 }
 
+function unbind($chatid)
+{
+    global $database;
+    $database->delete('user_telegram', [
+        'id_telegram' => $chatid
+    ]);
+
+    return true;
+}
+
 function bind($id_user, $chatid)
 {
     global $database;
-    $database->insert("user_telegram", [
+    $bind = $database->insert("user_telegram", [
         "id_user" => $id_user,
         "id_telegram" => $chatid
     ]);
+    return $bind;
 }
 
 function get_user_by_nik($nik)
 {
     global $database;
-    $database->select('user',
-        [],
-        ['nik, name, loker'],
-        ['nik' => $nik]
+    $user = $database->select('user',
+        [
+            'id_user',
+            'name',
+            'loker',
+        ],
+        [
+            'nik' => $nik
+        ]
     );
+    return $user;
 
 }
 
@@ -51,16 +68,6 @@ function get_user_telegram($chatid)
         'id_telegram' => $chatid,
     ]);
     return $user;
-}
-
-function unbind($chatid)
-{
-    global $database;
-    $database->delete('user_telegram', [
-        'id_telegram' => $chatid
-    ]);
-
-    return true;
 }
 
 
@@ -82,8 +89,6 @@ function insert_order($id_list_order,$order_client,$status_order,$keterangan_cli
     ],[
         'id_order'    => $last_id,
     ]);
-
-
     return $last_id;
 }
 

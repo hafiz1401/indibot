@@ -169,11 +169,15 @@ function prosesPesanTeks($message,$callback=false)
             //sendApiAction($chatid);
             $nik = $_SESSION['nik'][$chatid];
             $id_user = get_user_by_nik($nik);
-            bind($iduser,$chatid);
-            $text = "Bind berhasil.";
+            var_dump($nik)  ;
+
+            bind($id_user[0]['id_user'],$chatid);
+            $text = "Bind akun berhasil.";
             $inkeyboard = [
                 [
-                    ['text' => 'Daftar', 'callback_data' => 'daftar'],
+                    ['text' => 'Unbind', 'callback_data' => 'unbind'],
+                    ['text' => 'Absen', 'callback_data' => 'absen'],
+                    ['text' => 'Order', 'callback_data' => 'order'],
                 ],
             ];
             sendApiKeyboard($chatid, $text, $inkeyboard, true);
@@ -277,25 +281,23 @@ function prosesPesanTeks($message,$callback=false)
             case 'daftar':
                 switch ($_SESSION['state_input'][$chatid]) {
                     case 'daftar':
-                        //sendApiAction($chatid);
                         $user = get_user_by_nik($pesan);
-                        if ($user != null) {
+                        if (!empty($user)) {
                             $inkeyboard = [
                                 [
                                     ['text' => 'Bind', 'callback_data' => 'bind'],
                                 ],
                             ];
-                            sendApiKeyboard($chatid, 'Akun anda telah terdaftar dengan nama : ' .$user['name'], $inkeyboard, true);
-
+                            sendApiKeyboard($chatid, 'Akun anda telah terdaftar dengan nama : ' .$user[0]['name'], $inkeyboard, true);
+                            $_SESSION['nik'][$chatid] = $pesan;
                         } else {
                             $_SESSION['daftar_nik'][$chatid] = $pesan;
-                            $text = "Masukkan nama anda:";
+                            $text = "Masukkan nama anda : ";
                             sendApiMsg($chatid,$text);
                             $_SESSION['state_input'][$chatid] = "nik";
                         }
                         break;
                     case 'nik':
-                        //sendApiAction($chatid);
                         $_SESSION['daftar_nama'][$chatid] = $pesan;
                         $text = "Masukkan loker anda:";
                         sendApiMsg($chatid,$text);
