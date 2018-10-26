@@ -1,6 +1,12 @@
 <?php
 require_once 'medoo.php';
-require_once 'connection.php';
+require_once 'Connection/connection.php';
+
+if ($database == true) {
+    echo "true";
+} else {
+    echo "false";
+}
 
 function insert_order($id_list_order,$order_client,$status_order,$keterangan_client)
 {
