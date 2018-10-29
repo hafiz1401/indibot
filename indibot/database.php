@@ -40,14 +40,8 @@ function get_user_by_nik($nik)
 {
     global $database;
     $user = $database->select('user',
-        [
-            'id_user',
-            'name',
-            'loker',
-        ],
-        [
-            'nik' => $nik
-        ]
+        [ 'id_user', 'name', 'loker', 'nik' ],
+        [ 'nik' => $nik ]
     );
     return $user;
 
@@ -68,6 +62,28 @@ function get_user_telegram($chatid)
         'id_telegram' => $chatid,
     ]);
     return $user;
+}
+
+function get_event_by_id($id_event) {
+    global $database;
+    $event = $database->select('event',
+        [ 'id_event', 'event_name', 'event_venue' ],
+        [ 'id_event' => $id_event ]
+    );
+    return $event;
+}
+
+function get_invitations($id_user, $id_event){
+    global $database;
+    $invitations = $database->select('event_user',
+        'id_user',
+        [ 'id_user' => $id_user, 'id_event' => $id_event ]
+    );
+    if (!empty($invitations)) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 
