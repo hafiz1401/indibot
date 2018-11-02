@@ -76,6 +76,7 @@ Dan Lain-lain :-D
 session_start();
 $_SESSION['state'] = array();
 $_SESSION['state_input'] = array();
+$_SESSION['guest'][$chatid] = false;
 
 function prosesApiMessage($sumber)
 {
@@ -90,8 +91,8 @@ function prosesApiMessage($sumber)
             prosesPesanTeks($message);
         } elseif (isset($message['sticker'])) {
             prosesPesanSticker($message);
-        } else {
-            // gak di proses silakan dikembangkan sendiri
+        } elseif (isset($message['location'])) {
+            prosesPesanLocation($message);
         }
     }
 
@@ -105,6 +106,12 @@ function prosesApiMessage($sumber)
 function prosesPesanSticker($message)
 {
     // if ($GLOBALS['debug']) mypre($message);
+}
+
+function prosesPesanLocation($message)
+{
+    $message['text'] = $message['location']['latitude'] . ';' . $message['location']['longitude'];
+    prosesPesanTeks($message);
 }
 
 function prosesCallBackQuery($message)
@@ -190,21 +197,24 @@ function prosesPesanTeks($message,$callback=false)
                 ],
             ];
             sendApiKeyboard($chatid, $text, $inkeyboard, true);
+            $_SESSION['state'][$chatid] = '';
+            $_SESSION['state_input'][$chatid] = '';
             break;
 
         case $pesan == 'daftar':
-            $text = "Masukkan NIK anda:";
+            $text = "Masukkan NIK anda :";
             sendApiMsg($chatid, $text);
             $_SESSION['state'][$chatid] = 'daftar';
             $_SESSION['state_input'][$chatid] = 'daftar';
             break;
 
         case $pesan == 'absen':
-            $text = "Masukkan kode event";
+            $text = "Masukkan kode event :";
             sendApiMsg($chatid, $text);
             $_SESSION['state'][$chatid] = 'absen';
             $_SESSION['state_input'][$chatid] = 'absen';
             break;
+
 
 
         default:
@@ -221,7 +231,7 @@ function prosesPesanTeks($message,$callback=false)
             break;
         }
     } else {
-        if (get_user_telegram($chatid)){
+        if (get_user_telegram($chatid) || $_SESSION['guest'][$chatid] == true){
             switch (true) {
             case $pesan == '/id':
                 $text = 'ID Kamu adalah: '.$fromid;
@@ -250,19 +260,94 @@ function prosesPesanTeks($message,$callback=false)
                 switch ($_SESSION['state_input'][$chatid]) {
                     case 'absen':
                         $user = get_user_telegram($chatid);
-                        var_dump($user);
                         $current_user_input['kode_event'] = $pesan;
                         $event = get_event_by_id($current_user_input['kode_event']);
-                        $is_include_invitations = get_invitations($user['id_user'], $current_user_input['kode_event']);
+                        $is_include_invitations = is_invitation($user[0]['id_user'], $current_user_input['kode_event']);
+                        date_default_timezone_set('Asia/singapore');
+                        $now = date("Y-m-d H:i:s");
+                        $is_ongoing_event = ($event[0]['event_start'] <= $now && $event[0]['event_end'] >= $now);
                         if (!empty($event)){
                             if ($is_include_invitations) {
-                                // proses lagi
+                                if ($is_ongoing_event == true) {
+                                    $text = $event[0]['event_name'] . "\n"
+                                            . $event[0]['event_venue'] . "\n"
+                                            . $event[0]['event_start'] . " "
+                                            . "s/d "
+                                            . $event[0]['event_end'] . " Wita"; 
+                                    sendApiMsg($chatid, $text);
+                                    if ($event[0]['bot_absen'] == 1) {
+                                        if (!is_participant($user[0]['id_user'], $current_user_input['kode_event'])) {
+                                            $keyboard = [
+                                                    [
+                                                        ['text' => 'Hadir', 'request_location' => true],
+                                                        ['text' => 'Izin'],
+                                                    ],
+                                                ];
+                                            sendApiKeyboard($chatid, 'Klik hadir', $keyboard);
+                                            $event_loc = get_lokasi($event[0]['id_lokasi']);
+                                            $_SESSION['id_user'][$chatid] = $user[0]['id_user'];
+                                            $_SESSION['id_event'][$chatid] = $current_user_input['kode_event'];
+                                            $_SESSION['radius'][$chatid] = $event[0]['radius'];
+                                            $_SESSION['event_latitude'][$chatid] = $event_loc[0]['latitude'];
+                                            $_SESSION['event_longitude'][$chatid] = $event_loc[0]['longitude'];
+                                            $_SESSION['state_input'][$chatid] = 'proses_presensi';
+                                        } else {
+                                            sendApiMsg($chatid, 'Anda telah absen.');
+                                            $_SESSION['state'][$chatid] = '';
+                                            $_SESSION['state_input'][$chatid] = '';
+                                        }
+                                    } else {
+                                        sendApiMsg($chatid, 'Tidak bisa absen lewat bot.');
+                                    }
+                                } else {
+                                    sendApiMsg($chatid, 'Tidak bisa absen, perhatikan waktu acara.');
+                                }
                             } else {
-                                // 'anda tidak termasuk dalam undangan.';
+                                sendApiMsg($chatid, 'Maaf anda tidak termasuk dalam undangan.');
                             }
                         } else {
-                            // 'event_tidak dikenali';
+                            sendApiMsg($chatid, 'Event tidak dikenali.');
                         }
+                        break;
+
+                    case 'proses_presensi' :
+                        var_dump($pesan);
+                        var_dump('masuk');
+                        print_r($_SESSION);
+                        if (strtoupper($pesan) == 'IZIN') {
+                            var_dump('masuk izin');
+                            $status = "Izin";
+                            if (isset($_SESSION['guest_kode_event'])) {
+                                var_dump('mask izin query');
+                                insert_participant_guest($_SESSION['guest_kode_event'], $_SESSION['guest_absen_nik'], $_SESSION['guest_absen_name'], $_SESSION['guest_absen_instansi'], $status);
+                            } else {
+                                insert_participant($_SESSION['id_user'][$chatid], $_SESSION['id_event'][$chatid], $status);
+                            }
+                            $text = "Anda berhasil izin.";
+                        } elseif (count(explode(';', $pesan) == 2))  {
+                            $lokasi = explode(';', $pesan);
+                            $lat = $lokasi[0];
+                            $long = $lokasi[1];
+                            $radius = check_radius($lat, $long, $_SESSION['event_latitude'][$chatid], $_SESSION['event_longitude'][$chatid]);
+                            if ($radius < $_SESSION['radius'][$chatid]) {
+                                $status = "Hadir";
+                                insert_participant($_SESSION['id_user'][$chatid], $_SESSION['id_event'][$chatid], $status);
+                                $text = 'Behasil absen.';
+                            } else {
+                                $status = "Diluar lokasi";
+                                insert_participant($_SESSION['id_user'][$chatid], $_SESSION['id_event'][$chatid], $status);
+                                $text = 'Lokasi anda terlalu jauh dari event. Anda harus berada dalam radius ' . $_SESSION['radius'][$chatid] . ' km. Untuk saat ini data anda tersimpan dengan status Di Luar Lokasi.';
+                            }
+                        }
+                        sendApiMsg($chatid, $text);
+                        unset($_SESSION['id_user'][$chatid]);
+                        unset($_SESSION['id_event'][$chatid]);
+                        unset($_SESSION['radius'][$chatid]);
+                        unset($_SESSION['event_latitude'][$chatid]);
+                        unset($_SESSION['event_longitude'][$chatid]);
+                        $_SESSION['state_input'][$chatid] = '';
+                        $_SESSION['state'][$chatid] = '';
+                        print_r($_SESSION);
                         break;
                     
                     default:
@@ -270,7 +355,6 @@ function prosesPesanTeks($message,$callback=false)
                 }
 
             default:
-                //sendApiAction($chatid);
                 $inkeyboard = [
                     [
                         ['text' => 'Lihat Data', 'callback_data' => 'lihatdata'],
@@ -316,12 +400,12 @@ function prosesPesanTeks($message,$callback=false)
                             break;
                         case 'loker':
                             switch ($pesan) {
-                                case 'ya':
+                                case strtolower($pesan) == 'ya':
                                     register_user($_SESSION['daftar_nik'][$chatid], $_SESSION['daftar_nama'][$chatid], $_SESSION['daftar_loker'][$chatid], $chatid);
                                     $text = "Register berhasil.";
                                     sendApiMsg($chatid,$text);
                                     break;
-                                case 'tidak':
+                                case strtolower($pesan) == 'tidak':
                                     $user = get_user_telegram($chatid);
                                     $text = "Masukkan NIK anda:";
                                     sendApiMsg($chatid, $text);
@@ -342,7 +426,43 @@ function prosesPesanTeks($message,$callback=false)
                             break;
                     }
                     break;
+                    
+                case substr($pesan, 0, 5) == '/guest':
+                    $kode_event = explode(' ', $pesan)[1];
+                    $_SESSION['guest_kode_event'][$chatid] = $kode_event;
+                    $text = "Masukkan nik anda :";
+                    sendApiMsg($chatid, $text);
+                    $_SESSION['state'][$chatid] = 'guest_absen';
+                    $_SESSION['state_input'][$chatid] = 'guest_absen';
+                    break;
 
+                case 'guest_absen' :
+                    switch($_SESSION['state_input'][$chatid]) {
+                        case 'guest_absen' :
+                            $_SESSION['guest_absen_nik'][$chatid] = $pesan;
+                            $text = "Masukkan nama anda : ";
+                            sendApiMsg($chatid,$text);
+                            $_SESSION['state_input'][$chatid] = "guest_nik";
+                            break;
+                        case 'guest_nik' :
+                            $_SESSION['guest_absen_name'][$chatid] = $pesan;
+                            $text = "Masukkan asal instansi anda :";
+                            sendApiMsg($chatid, $text);
+                            $_SESSION['state_input'][$chatid] = "proses_guest";
+                            break;
+                        case 'proses_guest' :
+                            $_SESSION['guest_absen_instansi'][$chatid] = $pesan;
+                            $keyboard = [
+                                [
+                                    ['text' => 'Hadir', 'request_location' => true],
+                                    ['text' => 'Izin'],
+                                ],
+                            ];
+                            sendApiKeyboard($chatid, 'Klik hadir', $keyboard);
+                            $_SESSION['guest'][$chatid] = true;
+                            $_SESSION['state_input'][$chatid] = 'proses_presensi';
+                            break;
+                    }
                 
                 default:
                     switch (true) {

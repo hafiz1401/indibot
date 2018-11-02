@@ -67,23 +67,77 @@ function get_user_telegram($chatid)
 function get_event_by_id($id_event) {
     global $database;
     $event = $database->select('event',
-        [ 'id_event', 'event_name', 'event_venue' ],
+        [ 'id_event', 'event_name', 'event_venue', 'event_start', 'event_end', 'bot_absen', 'radius', 'id_lokasi' ],
         [ 'id_event' => $id_event ]
     );
     return $event;
 }
 
-function get_invitations($id_user, $id_event){
+function get_lokasi($id_lokasi) {
     global $database;
-    $invitations = $database->select('event_user',
-        'id_user',
-        [ 'id_user' => $id_user, 'id_event' => $id_event ]
+    $lokasi = $database->select('lokasi',
+        [ 'latitude', 'longitude' ],
+        [ 'id_lokasi' => $id_lokasi]
     );
-    if (!empty($invitations)) {
-        return true;
-    } else {
-        return false;
-    }
+    return $lokasi;
+}
+
+function is_invitation($id_user, $id_event){
+    global $database;
+    $invitation = $database->select('event_user',
+        [ 'id_user', 'id_event'] ,
+        [ "AND" => ['id_user' => $id_user, 'id_event' => $id_event ] ]
+    );
+    return (!empty($invitation)) ? true : false;
+}
+
+function insert_participant($id_user, $id_event, $status)
+{
+    global $database;
+    $participant = $database->insert("event_participant", [
+        "id_user" => $id_user,
+        "id_event" => $id_event,
+        "status" => $status
+    ]);
+}
+
+function insert_participant_guest($id_event, $nik, $name, $instansi, $status)
+{
+    global $database;
+    $guest = $database->insert('guest', [
+        "name" => $name,
+        "nik" => $nik,
+        "instansi" => $instansi
+    ]);
+
+    $database->insert('event_participant', [
+        "id_guest" => $guest,
+        "id_event" => $id_event,
+        "status" => $status
+    ]);
+
+}
+
+function is_participant($id_user, $id_event){
+    global $database;
+    $participant = $database->select('event_participant',
+        ['id_user', 'id_event'] ,
+        [ "AND" => [ 'id_user' => $id_user, 'id_event' => $id_event ] ]
+    );
+    return (!empty($participant)) ? true : false;
+}
+
+function check_radius($user_lat, $user_long, $event_lat, $event_long)
+{
+    $earth_radius = 6371;
+
+    $dLat = deg2rad( $event_lat - $user_lat );  
+    $dLon = deg2rad( $event_long - $user_long );  
+
+    $a = sin($dLat/2) * sin($dLat/2) + cos(deg2rad($user_lat)) * cos(deg2rad($event_lat)) * sin($dLon/2) * sin($dLon/2);  
+    $c = 2 * asin(sqrt($a));  
+    $d = $earth_radius * $c;  
+    return $d;
 }
 
 
